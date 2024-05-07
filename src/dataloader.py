@@ -247,7 +247,7 @@ class Loader:
                     )
                     if os.path.exists(config_files["path"]["files_path"])
                     else os.path.join(
-                        config_files["path"["files_path"]], "dataset_details.csv"
+                        config_files["path"]["files_path"], "dataset_details.csv"
                     )
                 )
             )
@@ -259,9 +259,7 @@ class Loader:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Dataloader for the DiscoGAN".title())
     parser.add_argument(
-        "--image_path",
-        type=str,
-        default="/Users/shahmuhammadraditrahman/Desktop/images.zip",
+        "--image_path", type=str, default=None, help="Define the data path".capitalize()
     )
     parser.add_argument(
         "--batch_size",
@@ -272,17 +270,25 @@ if __name__ == "__main__":
         "--image_size", type=int, default=256, help="Define the Image size".capitalize()
     )
     parser.add_argument(
+        "--split_size",
+        type=float,
+        default=0.20,
+        help="Define the split size".capitalize(),
+    )
+    parser.add_argument(
         "--channels", type=int, default=3, help="Define the channels".capitalize()
     )
     parser.add_argument(
         "--unpaired_images",
         type=bool,
         default=False,
+        help="Define whether the image is unpaired or not".capitalize(),
     )
     parser.add_argument(
         "--paired_images",
         type=bool,
         default=True,
+        help="Define whether the image is unpaired or not".capitalize(),
     )
     args = parser.parse_args()
 
@@ -291,12 +297,13 @@ if __name__ == "__main__":
             image_path=args.image_path,
             batch_size=args.batch_size,
             image_size=args.image_size,
+            split_size=args.split_size,
             channels=args.channels,
-            unpaired_image=args.unpaired_images,
+            unpaired_images=args.unpaired_images,
             paired_images=args.paired_images,
         )
 
-        loader.unzip_folder()
+        # loader.unzip_folder()
         loader.extract_features()
         loader.create_dataloader()
 

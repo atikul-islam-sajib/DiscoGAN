@@ -1,9 +1,9 @@
 ,Details dataset
-train_data(total),12
-test_data(total),4
-data(total),16
-train_data(batch),12
-test_data(batch),1
+train_data(total),25
+test_data(total),7
+data(total),32
+train_data(batch),25
+test_data(batch),2
 train_data(shape),"torch.Size([3, 256, 256])"
 test_data(shape),"torch.Size([3, 256, 256])"
 data(shape),"torch.Size([3, 256, 256])"
