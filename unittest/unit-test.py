@@ -7,6 +7,7 @@ sys.path.append("src/")
 
 from utils import config, load
 from generator import Generator
+from discriminator import Discriminator
 
 
 class UnitTest(unittest.TestCase):
@@ -21,6 +22,7 @@ class UnitTest(unittest.TestCase):
             os.path.join(config()["path"]["processed_path"], "dataloader.pkl")
         )
         self.netG = Generator(in_channels=3)
+        self.netD = Discriminator(in_channels=3, out_channels=64)
 
     def test_train_dataloader_shape(self):
         data, mask = next(iter(self.train_dataloader))
@@ -62,6 +64,11 @@ class UnitTest(unittest.TestCase):
     def test_netG_shape(self):
         self.assertEqual(
             self.netG(torch.randn(1, 3, 256, 256)).size(), torch.Size([1, 3, 256, 256])
+        )
+
+    def test_netD_shape(self):
+        self.assertEqual(
+            self.netD(torch.randn(1, 3, 256, 256)).size(), torch.Size([1, 1, 30, 30])
         )
 
 
