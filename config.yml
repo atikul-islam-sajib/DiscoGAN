@@ -1,10 +1,10 @@
-path:
-  files_path: ../../research/files
-  raw_path: ../../data/raw/
-  processed_path: ../../data/processed/
-
-
 # path:
-#   files_path: ./research/files
-#   raw_path: ./data/raw/
-#   processed_path: ./data/processed/
+#   files_path: ../../research/files
+#   raw_path: ../../data/raw/
+#   processed_path: ../../data/processed/
+
+
+path:
+  files_path: ./research/files
+  raw_path: ./data/raw/
+  processed_path: ./data/processed/
