@@ -91,6 +91,13 @@ class Generator(nn.Module):
         else:
             raise Exception("Unable to process the input".capitalize())
 
+    @staticmethod
+    def total_params(model=None):
+        if isinstance(model, Generator):
+            return sum(p.numel() for p in model.parameters() if p.requires_grad)
+        else:
+            raise Exception("Unable to process the input".capitalize())
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
@@ -119,3 +126,5 @@ if __name__ == "__main__":
         filename=os.path.join(config_files["path"]["files_path"], "netG_model"),
         format="jpeg",
     )
+
+    assert Generator.total_params(model=netG) == 11372928
