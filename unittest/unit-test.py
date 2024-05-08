@@ -23,6 +23,7 @@ class UnitTest(unittest.TestCase):
         )
         self.netG = Generator(in_channels=3)
         self.netD = Discriminator(in_channels=3, out_channels=64)
+        print(type(self.netD))
 
     def test_train_dataloader_shape(self):
         data, mask = next(iter(self.train_dataloader))

@@ -59,6 +59,13 @@ class Discriminator(nn.Module):
         else:
             raise Exception("Unable to process the input".capitalize())
 
+    @staticmethod
+    def total_params(model=None):
+        if isinstance(model, Discriminator):
+            return sum(p.numel() for p in model.parameters() if p.requires_grad)
+        else:
+            raise Exception("Unable to process the input".capitalize())
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Discriminator".title())
@@ -91,3 +98,5 @@ if __name__ == "__main__":
         filename=os.path.join(config_files["path"]["files_path"], "netD_model"),
         format="jpeg",
     )
+
+    assert Discriminator.total_params(model=netD) == 2763776
