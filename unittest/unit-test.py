@@ -72,6 +72,9 @@ class UnitTest(unittest.TestCase):
             self.netD(torch.randn(1, 3, 256, 256)).size(), torch.Size([1, 1, 30, 30])
         )
 
+    def test_total_params_netG(self):
+        self.assertEqual(self.netG.total_params(model=self.netG), 11372928)
+
 
 if __name__ == "__main__":
     unittest.main()
