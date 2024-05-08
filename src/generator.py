@@ -18,11 +18,12 @@ from residual_block import ResidualBlock
 
 
 class Generator(nn.Module):
-    def __init__(self, in_channels=3):
+    def __init__(self, in_channels=3, out_channels=3):
         super(Generator, self).__init__()
 
         self.in_channels = in_channels
         self.out_channels = 64
+        self.last_channels = out_channels
 
         self.kernel = 7
         self.stride = 1
@@ -73,7 +74,7 @@ class Generator(nn.Module):
         self.output = nn.Sequential(
             nn.Conv2d(
                 in_channels=self.out_channels * 2,
-                out_channels=self.in_channels,
+                out_channels=self.last_channels,
                 kernel_size=self.kernel,
                 stride=self.stride,
                 padding=self.padding,
@@ -115,6 +116,6 @@ if __name__ == "__main__":
     draw_graph(
         model=netG, input_data=torch.randn((1, 3, 256, 256))
     ).visual_graph.render(
-        filename=os.path.join(config_files["path"]["files_path"], "netG1_model"),
+        filename=os.path.join(config_files["path"]["files_path"], "netG_model"),
         format="jpeg",
     )

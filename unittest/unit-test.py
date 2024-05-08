@@ -6,6 +6,7 @@ import torch
 sys.path.append("src/")
 
 from utils import config, load
+from generator import Generator
 
 
 class UnitTest(unittest.TestCase):
@@ -19,6 +20,7 @@ class UnitTest(unittest.TestCase):
         self.dataloader = load(
             os.path.join(config()["path"]["processed_path"], "dataloader.pkl")
         )
+        self.netG = Generator(in_channels=3)
 
     def test_train_dataloader_shape(self):
         data, mask = next(iter(self.train_dataloader))
@@ -55,6 +57,11 @@ class UnitTest(unittest.TestCase):
         self.assertEqual(
             7,
             sum(data.size(0) for data, _ in self.test_dataloader),
+        )
+
+    def test_netG_shape(self):
+        self.assertEqual(
+            self.netG(torch.randn(1, 3, 256, 256)).size(), torch.Size([1, 3, 256, 256])
         )
 
 
