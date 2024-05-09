@@ -40,7 +40,7 @@ def helpers(**kwargs):
     out_channels = 64
 
     netG_XtoY = Generator(in_channels=in_channels, out_channels=in_channels)
-    netG_YtoX = Generator(out_channels=in_channels, out_channels=in_channels)
+    netG_YtoX = Generator(in_channels=in_channels, out_channels=in_channels)
 
     netD_X = Discriminator(in_channels=in_channels, out_channels=out_channels)
     netD_Y = Discriminator(in_channels=in_channels, out_channels=out_channels)
@@ -86,4 +86,17 @@ def helpers(**kwargs):
 
 
 if __name__ == "__main__":
-    helpers(lr=0.0002, adam=True, SGD=False, in_channels=3)
+    init = helpers(lr=0.0002, adam=True, SGD=False, in_channels=3)
+    print(init["netG_XtoY"])
+    print(init["netG_YtoX"])
+    print(init["netD_X"])
+    print(init["netD_Y"])
+    print(init["optimizerG"])
+    print(init["optimizerD_X"])
+    print(init["optimizerD_Y"])
+    print(init["adversarial_loss"])
+    print(init["cycle_loss"])
+    print(init["pixel_loss"])
+    print(init["dataloader"])
+    print(init["train_dataloader"])
+    print(init["test_dataloader"])
