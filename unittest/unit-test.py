@@ -8,6 +8,7 @@ sys.path.append("src/")
 from utils import config, load
 from generator import Generator
 from discriminator import Discriminator
+from helper import helpers
 
 
 class UnitTest(unittest.TestCase):
@@ -23,7 +24,7 @@ class UnitTest(unittest.TestCase):
         )
         self.netG = Generator(in_channels=3)
         self.netD = Discriminator(in_channels=3, out_channels=64)
-        print(type(self.netD))
+        self.helper = helpers(lr=0.0002, adam=True, SGD=False, in_channels=3)
 
     def test_train_dataloader_shape(self):
         data, mask = next(iter(self.train_dataloader))
@@ -74,6 +75,36 @@ class UnitTest(unittest.TestCase):
 
     def test_total_params_netG(self):
         self.assertEqual(self.netG.total_params(model=self.netG), 11372928)
+
+    def test_helpers_netG_XtoY(self):
+        self.netG_XtoY = self.helper["netG_XtoY"]
+
+        self.assertEqual(
+            self.netG_XtoY(torch.randn(1, 3, 256, 256)).size(),
+            torch.Size([1, 3, 256, 256]),
+        )
+
+    def test_helpers_netG_YtoX(self):
+        self.netG_YtoX = self.helper["netG_YtoX"]
+
+        self.assertEqual(
+            self.netG_YtoX(torch.randn(1, 3, 256, 256)).size(),
+            torch.Size([1, 3, 256, 256]),
+        )
+
+    def test_helpers_netD_X_shape(self):
+        self.netD_X = self.helper["netD_X"]
+
+        self.assertEqual(
+            self.netG(torch.randn(1, 3, 256, 256)).size(), torch.Size([1, 3, 256, 256])
+        )
+
+    def test_helpers_netD_Y_shape(self):
+        self.netD_Y = self.helper["netD_Y"]
+
+        self.assertEqual(
+            self.netG(torch.randn(1, 3, 256, 256)).size(), torch.Size([1, 3, 256, 256])
+        )
 
 
 if __name__ == "__main__":
