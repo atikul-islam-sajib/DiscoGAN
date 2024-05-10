@@ -1,0 +1,17 @@
+train_params:
+  SGD: false
+  adam: true
+  batch_size: 1
+  channels: 3
+  device: mps
+  epochs: 2
+  image_path: /Users/shahmuhammadraditrahman/Desktop/images.zip
+  image_size: 256
+  in_channels: 3
+  is_display: true
+  is_weight_init: true
+  lr: 0.0002
+  lr_scheduler: true
+  paired_images: true
+  split_size: 0.3
+  unpaired_images: false
