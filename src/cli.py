@@ -1,12 +1,10 @@
 import sys
-import os
 import yaml
 import argparse
 
 sys.path.append("src/")
 
 from dataloader import Loader
-from generator import Generator
 from trainer import Trainer
 from test import TestModel
 from inference import Inference
@@ -17,9 +15,9 @@ def cli():
     parser.add_argument(
         "--image_path", type=str, default=None, help="Define the data path".capitalize()
     )
-    parser.add_argument("--batch_size", type=int, default=8)
+    parser.add_argument("--batch_size", type=int, default=1)
     parser.add_argument(
-        "--image_size", type=int, default=256, help="Define the Image size".capitalize()
+        "--image_size", type=int, default=512, help="Define the Image size".capitalize()
     )
     parser.add_argument(
         "--split_size",
@@ -159,6 +157,7 @@ def cli():
             paired_images=args.paired_images,
         )
 
+        loader.unzip_folder()
         loader.extract_features()
         loader.create_dataloader()
 
@@ -180,7 +179,7 @@ def cli():
 
         trainer.plot_history()
 
-        with open("./trained_yml", "w") as file:
+        with open("./trained_params.yml", "w") as file:
             yaml.safe_dump(
                 file,
                 {
