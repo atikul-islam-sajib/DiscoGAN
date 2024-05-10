@@ -42,3 +42,26 @@ def weights_init(m):
     elif classname.find("BatchNorm") != -1:
         nn.init.normal_(m.weight.data, 1.0, 0.02)
         nn.init.constant_(m.bias.data, 0.0)
+
+
+def clear():
+    config_files = config()
+
+    netG_XtoY_path = config_files["path"]["netG_XtoY_path"]
+    netG_YtoX_path = config_files["path"]["netG_YtoX_path"]
+    best_model_path = config_files["path"]["best_model_path"]
+    train_results = config_files["path"]["train_results"]
+    test_result = config_files["path"]["test_result"]
+    metrics_path = config_files["path"]["metrics_path"]
+
+    for folder in [
+        netG_XtoY_path,
+        netG_YtoX_path,
+        best_model_path,
+        train_results,
+        metrics_path,
+        test_result,
+    ]:
+        for file in os.listdir(folder):
+            print(folder)
+            os.remove(os.path.join(folder, file))
