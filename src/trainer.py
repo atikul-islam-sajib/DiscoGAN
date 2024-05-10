@@ -355,7 +355,7 @@ class Trainer:
             self.total_netD_X_loss.append(np.mean(netD_X_loss))
             self.total_netD_Y_loss.append(np.mean(netD_Y_loss))
 
-            if (epoch + 1) % 50 and (self.is_save_image):
+            if ((epoch + 1) % 50 == 0) and (self.is_save_image):
                 self.saved_train_images(epoch=epoch + 1)
 
             if self.lr_scheduler:
