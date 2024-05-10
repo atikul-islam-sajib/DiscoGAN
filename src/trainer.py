@@ -8,6 +8,8 @@ sys.path.append("src/")
 
 from utils import device_init, weights_init
 from helper import helpers
+from generator import Generator
+from discriminator import Discriminator
 
 
 class Trainer:
@@ -69,28 +71,36 @@ class Trainer:
         self.train_dataloader = self.init["train_dataloader"]
         self.test_dataloader = self.init["test_dataloader"]
 
-        print(self.netG_XtoY)
-        print(self.netG_YtoX)
-        print(self.netD_X)
-        print(self.netD_Y)
-        print(self.optimizerG)
-        print(self.optimizerD_X)
-        print(self.optimizerD_Y)
-        print(self.adversarial_loss)
-        print(self.cycle_loss)
-        print(self.pixel_loss)
-        print(self.dataloader)
-        print(self.train_dataloader)
-        print(self.test_dataloader)
+        print(type(self.netG_XtoY))
 
     def l1(self, model):
-        pass
+        if isinstance(model, Generator):
+            return 0.01 * sum(torch.norm(params, 1) for params in model.parameters())
 
-    def l2(self, l2):
-        pass
+        else:
+            raise Exception(
+                "Cannot able to use L1 regularization with Generator".capitalize()
+            )
+
+    def l2(self, model):
+        if isinstance(model, Generator):
+            return 0.01 * sum(torch.norm(params, 2) for params in model.parameters())
+
+        else:
+            raise Exception(
+                "Cannot able to use L2 regularization with Generator".capitalize()
+            )
 
     def elastic_loss(self, model):
-        pass
+        if isinstance(model, Generator):
+            l1 = self.l1(model=model)
+            l2 = self.l2(model=model)
+
+            return 0.01 * (l1 + l2)
+        else:
+            raise Exception(
+                "Cannot able to use elastic regularization with Generator".capitalize()
+            )
 
     def saved_checkpoints_netG_XtoY(self, epoch=None):
         pass
