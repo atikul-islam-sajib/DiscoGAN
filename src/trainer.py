@@ -16,7 +16,7 @@ sys.path.append("src/")
 from helper import helpers
 from generator import Generator
 from discriminator import Discriminator
-from utils import device_init, weights_init, config, load, dump
+from utils import device_init, weights_init, config, load, dump, clear
 
 
 class Trainer:
@@ -104,6 +104,12 @@ class Trainer:
         self.loss = float("inf")
 
         self.config = config()
+
+        try:
+            clear() # That is used to delete all the existing folder with their fil
+
+        except Exception as e:
+            print(f"An error occurred during the training process: {e}")
 
     def l1(self, model):
         if isinstance(model, Generator):
