@@ -157,7 +157,7 @@ def cli():
             paired_images=args.paired_images,
         )
 
-        loader.unzip_folder()
+        # loader.unzip_folder()
         loader.extract_features()
         loader.create_dataloader()
 
@@ -181,7 +181,6 @@ def cli():
 
         with open("./trained_params.yml", "w") as file:
             yaml.safe_dump(
-                file,
                 {
                     "train_params": {
                         "image_path": args.image_path,
@@ -202,6 +201,7 @@ def cli():
                         "is_weight_init": args.is_weight_init,
                     }
                 },
+                file,
             )
 
     elif args.test:
