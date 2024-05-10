@@ -44,7 +44,7 @@ class Loader:
             [
                 transforms.Resize((self.image_size, self.image_size), Image.BICUBIC),
                 transforms.ToTensor(),
-                transforms.Grayscale(num_output_channels=self.channels),
+                # transforms.Grayscale(num_output_channels=self.channels),
                 transforms.CenterCrop((self.image_size, self.image_size)),
                 transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
             ]
