@@ -1,12 +1,14 @@
 import sys
 import os
 import argparse
+import numpy as np
+from tqdm import tqdm
 import torch
 import torch.nn as nn
 
 sys.path.append("src/")
 
-from utils import device_init, weights_init
+from utils import device_init, weights_init, config
 from helper import helpers
 from generator import Generator
 from discriminator import Discriminator
@@ -71,7 +73,11 @@ class Trainer:
         self.train_dataloader = self.init["train_dataloader"]
         self.test_dataloader = self.init["test_dataloader"]
 
-        print(type(self.netG_XtoY))
+        self.total_netG_loss = []
+        self.total_netD_X_loss = []
+        self.total_netD_Y_loss = []
+
+        self.config = config()
 
     def l1(self, model):
         if isinstance(model, Generator):
@@ -103,10 +109,30 @@ class Trainer:
             )
 
     def saved_checkpoints_netG_XtoY(self, epoch=None):
-        pass
+        if os.path.exists(self.config["path"]["netG_XtoY_path"]):
+            torch.save(
+                self.netG_XtoY.state_dict(),
+                os.path.join(
+                    self.config["path"]["netG_XtoY_path"],
+                    "netG_XtoY{}.pth".format(epoch),
+                ),
+            )
+
+        else:
+            raise Exception("Cannot able to save the netG_XtoY model".capitalize())
 
     def saved_checkpoints_netG_YtoX(self, epoch=None):
-        pass
+        if os.path.exists(self.config["path"]["netG_YtoX_path"]):
+            torch.save(
+                self.netG_YtoX.state_dict(),
+                os.path.join(
+                    self.config["path"]["netG_YtoX_path"],
+                    "netG_YtoX{}.pth".format(epoch),
+                ),
+            )
+
+        else:
+            raise Exception("Cannot able to save the netG_XtoY model".capitalize())
 
     def saved_train_best_model(self, **kwargs):
         pass
@@ -118,20 +144,119 @@ class Trainer:
         pass
 
     def show_progress(self, **kwargs):
-        pass
+        if self.is_display:
+            print(
+                "Epochs: [{}/{}] - netG_loss: [{:.4f}] - netD_X_loss: {:.4f} - netD_Y_loss: {:.4f}".format(
+                    kwargs["epoch"],
+                    self.epochs,
+                    np.mean(kwargs["netG_loss"]),
+                    np.mean(kwargs["netD_X_loss"]),
+                    np.mean(kwargs["netD_Y_loss"]),
+                )
+            )
 
     def update_train_netG(self, **kwargs):
-        pass
+        self.optimizerG.zero_grad()
+
+        fake_y = self.netG_XtoY(kwargs["X"])
+        fake_y_predict = self.netD_Y(fake_y)
+        fake_y_loss = self.adversarial_loss(
+            fake_y_predict, torch.ones_like(fake_y_predict)
+        )
+
+        fake_x = self.netG_YtoX(kwargs["y"])
+        real_x_predict = self.netD_X(fake_x)
+        fake_x_loss = self.adversarial_loss(
+            real_x_predict, torch.ones_like(real_x_predict)
+        )
+
+        reconstructed_x = self.netG_YtoX(fake_y)
+        reconstructed_x_loss = self.cycle_loss(kwargs["X"], reconstructed_x)
+
+        reconstructed_y = self.netG_XtoY(fake_x)
+        reconstructed_y_loss = self.cycle_loss(kwargs["y"], reconstructed_y)
+
+        pixel_loss_y = self.pixel_loss(kwargs["y"], fake_y)
+        pixel_loss_x = self.pixel_loss(kwargs["X"], fake_x)
+
+        total_G_loss = (
+            (0.5 * (fake_y_loss + fake_x_loss))
+            + (0.5 * (reconstructed_x_loss + reconstructed_y_loss))
+            + (0.5 * (pixel_loss_x + pixel_loss_y))
+        )
+
+        total_G_loss.backward()
+        self.optimizerG.step()
+
+        return total_G_loss.item()
 
     def update_train_netD_X(self, **kwargs):
-        pass
+        self.optimizerD_X.zero_grad()
+
+        fake_x = self.netG_YtoX(kwargs["y"])
+        real_x_predict = self.netD_X(kwargs["X"])
+        fake_x_predict = self.netD_X(fake_x)
+
+        real_x_loss = self.adversarial_loss(
+            real_x_predict, torch.ones_like(real_x_predict)
+        )
+        fake_x_loss = self.adversarial_loss(
+            fake_x_predict, torch.zeros_like(fake_x_predict)
+        )
+
+        d_x_loss = (real_x_loss + fake_x_loss) / 2
+
+        d_x_loss.backward()
+        self.optimizerD_X.step()
+
+        return d_x_loss.item()
 
     def update_train_netD_Y(self, **kwargs):
-        pass
+        self.optimizerD_Y.zero_grad()
+
+        fake_y = self.netG_XtoY(kwargs["X"])
+        real_y_predict = self.netD_Y(kwargs["y"])
+        fake_y_predict = self.netD_Y(fake_y)
+
+        real_y_loss = self.adversarial_loss(
+            real_y_predict, torch.ones_like(real_y_predict)
+        )
+        fake_y_loss = self.adversarial_loss(
+            fake_y_predict, torch.zeros_like(fake_y_predict)
+        )
+
+        d_y_loss = (real_y_loss + fake_y_loss) / 2
+
+        d_y_loss.backward()
+        self.optimizerD_Y.step()
+
+        return d_y_loss.item()
 
     def train(self):
-        pass
+        for epoch in tqdm(range(self.epochs)):
+            netG_loss = []
+            netD_X_loss = []
+            netD_Y_loss = []
+
+            for _, (X, y) in enumerate(self.train_dataloader):
+                X = X.to(self.device)
+                y = y.to(self.device)
+
+                netD_X_loss.append(self.update_train_netD_X(X=X, y=y))
+                netD_Y_loss.append(self.update_train_netD_Y(X=X, y=y))
+                netG_loss.append(self.update_train_netG(X=X, y=y))
+
+            self.show_progress(
+                netG_loss=netG_loss,
+                netD_X_loss=netD_X_loss,
+                netD_Y_loss=netD_Y_loss,
+                epoch=epoch + 1,
+            )
+
+            self.saved_checkpoints_netG_XtoY(epoch=epoch + 1)
+            self.saved_checkpoints_netG_YtoX(epoch=epoch + 1)
 
 
 if __name__ == "__main__":
     trainer = Trainer(epochs=1)
+    trainer.train()

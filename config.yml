@@ -8,3 +8,5 @@ path:
   files_path: ./research/files
   raw_path: ./data/raw/
   processed_path: ./data/processed/
+  netG_XtoY_path: ./checkpoints/train_models_netG_XtoY
+  netG_YtoX_path: ./checkpoints/train_models_netG_YtoX
