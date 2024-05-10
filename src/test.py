@@ -1,76 +1,186 @@
 import sys
 import os
+import argparse
+import numpy as np
 import torch
+import imageio
 import matplotlib.pyplot as plt
 
 sys.path.append("src/")
 
-from utils import load
+from utils import config, load, device_init
 from generator import Generator
 
-device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
 
-# Initialize the generators
-netG_XtoY = Generator().to(device)
-netG_YtoX = Generator().to(device)
+class TestModel:
+    def __init__(self, netG_XtoY=None, netG_YtoX=None, device="mps"):
+        self.XtoY = netG_XtoY
+        self.YtoX = netG_YtoX
+
+        self.device = device
+
+        self.device = device_init(self.device)
+        self.config = config()
+
+        self.netG_XtoY = Generator()
+        self.netG_YtoX = Generator()
+
+        self.netG_XtoY.to(self.device)
+        self.netG_YtoX.to(self.device)
+
+    def select_best_model(self):
+        if os.path.exists(self.config["path"]["best_model_path"]):
+            model_state_dict = torch.load(
+                os.path.join(self.config["path"]["best_model_path"], "best_model.pth")
+            )
+
+            self.netG_XtoY.load_state_dict(model_state_dict["netG_XtoY"])
+            self.netG_YtoX.load_state_dict(model_state_dict["netG_YtoX"])
+
+        else:
+            if isinstance(self.XtoY, Generator) and isinstance(self.YtoX, Generator):
+                state_dict_XtoY = torch.load(self.XtoY)
+                state_dict_YtoX = torch.load(self.YtoX)
+
+                self.netG_XtoY.load_state_dict(state_dict_XtoY)
+                self.netG_YtoX.load_state_dict(state_dict_YtoX)
+
+            else:
+                raise ValueError("XtoY and YtoX should be defined".capitalize())
+
+    def create_gif_file(self):
+        if os.path.exists(self.config["path"]["train_results"]):
+            path = self.config["path"]["train_results"]
+
+            self.images = [
+                imageio.imread(os.path.join(path, image)) for image in os.listdir(path)
+            ]
+
+            if os.path.exists(self.config["path"]["gif_path"]):
+                path = self.config["path"]["gif_path"]
+
+                imageio.mimsave(
+                    os.path.join(path, "train_results.gif"), self.images, "GIF"
+                )
+
+            else:
+                raise Exception("Cannot create the GIF file".capitalize())
+
+        else:
+            raise Exception(
+                "Cannot extract the images from the train images directory".capitalize()
+            )
+
+    def load_dataloader(self):
+        if os.path.exists(self.config["path"]["processed_path"]):
+            path = self.config["path"]["processed_path"]
+
+            self.test_dataloader = load(
+                filename=os.path.join(path, "test_dataloader.pkl")
+            )
+
+            return self.test_dataloader
+
+        else:
+            raise Exception("processed_path does not exist".capitalize())
+
+    def image_normalized(self, image=None):
+        if image is not None:
+            return (image - image.min()) / (image.max() - image.min())
+
+        else:
+            raise ValueError("image should be a torch.Tensor".capitalize())
+
+    def create_plot(self, **kwargs):
+        plt.figure(figsize=(40, 40))
+
+        X = kwargs["X"]
+        y = kwargs["y"]
+
+        predicted_y = self.netG_XtoY(X.to(self.device))
+        reconstructed_x = self.netG_YtoX(predicted_y)
+
+        for index, image in enumerate(predicted_y):
+            real_X = X[index].squeeze().permute(1, 2, 0).cpu().detach().numpy()
+            pred_y = image.squeeze().permute(1, 2, 0).cpu().detach().numpy()
+            real_y = y[index].squeeze().permute(1, 2, 0).cpu().detach().numpy()
+            revert_X = reconstructed_x[index].squeeze().permute(1, 2, 0).cpu().detach()
+
+            real_X = self.image_normalized(image=real_X)
+            pred_y = self.image_normalized(image=pred_y)
+            real_y = self.image_normalized(image=real_y)
+            revert_X = self.image_normalized(image=revert_X)
+
+            plt.subplot(4 * 4, 4 * 1, 4 * index + 1)
+            plt.imshow(real_X)
+            plt.title("X")
+            plt.axis("off")
+
+            plt.subplot(4 * 4, 4 * 1, 4 * index + 2)
+            plt.imshow(pred_y)
+            plt.title("pred_Y")
+            plt.axis("off")
+
+            plt.subplot(4 * 4, 4 * 1, 4 * index + 3)
+            plt.imshow(real_y)
+            plt.title("Y")
+            plt.axis("off")
+
+            plt.subplot(4 * 4, 4 * 1, 4 * index + 4)
+            plt.imshow(revert_X)
+            plt.title("Reconstructed_X")
+            plt.axis("off")
+
+        plt.tight_layout()
+        if os.path.exists(self.config["path"]["test_result"]):
+            path = self.config["path"]["test_result"]
+            plt.savefig(os.path.join(path, "test_result.png"))
+            print(
+                """The result is saved as test_result.png in the "./outputs/test_result" directory"""
+            )
+        plt.show()
+
+    def test(self):
+        try:
+            self.select_best_model()
+        except Exception as e:
+            print("An error occurred {}".format(e))
+        else:
+            self.test_dataloader = self.load_dataloader()
+
+            X, y = next(iter(self.test_dataloader))
+
+            self.create_plot(X=X, y=y)
+            self.create_gif_file()
 
 
-# Load the state dictionaries
-state_X = torch.load(
-    "/Users/shahmuhammadraditrahman/Desktop/DiscoGAN/checkpoints/train_models_netG_XtoY/netG_XtoY100.pth"
-)
-netG_XtoY.load_state_dict(state_X)
-
-state_Y = torch.load(
-    "/Users/shahmuhammadraditrahman/Desktop/DiscoGAN/checkpoints/train_models_netG_YtoX/netG_YtoX100.pth"
-)
-netG_YtoX.load_state_dict(state_Y)
-
-# Load data
-X, y = next(
-    iter(
-        load(
-            "/Users/shahmuhammadraditrahman/Desktop/DiscoGAN/data/processed/train_dataloader.pkl"
-        )
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Test the model for DiscoGAN".title())
+    parser.add_argument(
+        "--XtoY",
+        type=str,
+        default=None,
+        help="Define the path to the XtoY model".capitalize(),
     )
-)
+    parser.add_argument(
+        "--YtoX",
+        type=str,
+        default=None,
+        help="Define the path to the YtoX model".capitalize(),
+    )
+    parser.add_argument(
+        "--device",
+        type=str,
+        default="mps",
+        help="Define the device".capitalize(),
+    )
 
-# Generate predictions
-predict_y = netG_XtoY(X.to(device))
-reconstructed_y = netG_YtoX(predict_y)
+    args = parser.parse_args()
 
+    test_model = TestModel(
+        XtoY_model_path=args.XtoY,
+        YtoX_model_path=args.YtoX,
+        device=args.device,
+    )
 
-# Normalization and conversion of tensor to numpy for visualization
-def process_image(img):
-    img = img.squeeze()  # Remove unnecessary dimensions
-    img = (img - img.min()) / (img.max() - img.min())  # Normalize to [0, 1]
-    return (
-        img.permute(1, 2, 0).cpu().detach().numpy()
-    )  # Rearrange dimensions and convert to numpy
-
-
-# Process images
-X_np = process_image(X)
-y_np = process_image(y)
-predict_np = process_image(predict_y)
-reconstructed_np = process_image(reconstructed_y)
-
-# Plotting
-fig, axs = plt.subplots(1, 4, figsize=(20, 5))
-axs[0].imshow(X_np)
-axs[0].set_title("Original X")
-axs[0].axis("off")
-
-axs[1].imshow(y_np)
-axs[1].set_title("Original Y")
-axs[1].axis("off")
-
-axs[2].imshow(predict_np)
-axs[2].set_title("Predicted Y")
-axs[2].axis("off")
-
-axs[3].imshow(reconstructed_np)
-axs[3].set_title("Reconstructed X")
-axs[3].axis("off")
-
-plt.show()
+    test_model.test()
