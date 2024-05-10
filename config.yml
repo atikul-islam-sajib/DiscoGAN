@@ -10,3 +10,6 @@ path:
   processed_path: ./data/processed/
   netG_XtoY_path: ./checkpoints/train_models_netG_XtoY
   netG_YtoX_path: ./checkpoints/train_models_netG_YtoX
+  best_model_path: ./checkpoints/best_model/
+  train_results: ./outputs/train_results/
+  metrics_path: ./metrics/

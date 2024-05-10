@@ -2,13 +2,17 @@ import sys
 import os
 import argparse
 import numpy as np
+import pandas as pd
 from tqdm import tqdm
+import warnings
 import torch
 import torch.nn as nn
+from torchvision.utils import save_image
+from torch.optim.lr_scheduler import StepLR
 
 sys.path.append("src/")
 
-from utils import device_init, weights_init, config
+from utils import device_init, weights_init, config, load, dump
 from helper import helpers
 from generator import Generator
 from discriminator import Discriminator
@@ -46,20 +50,8 @@ class Trainer:
         self.netG_XtoY = self.init["netG_XtoY"]
         self.netG_YtoX = self.init["netG_YtoX"]
 
-        self.netG_XtoY.to(self.device)
-        self.netG_YtoX.to(self.device)
-
         self.netD_X = self.init["netD_X"]
         self.netD_Y = self.init["netD_Y"]
-
-        self.netD_X.to(self.device)
-        self.netD_Y.to(self.device)
-
-        if self.is_weight_init:
-            self.netG_XtoY.apply(weights_init)
-            self.netG_YtoX.apply(weights_init)
-            self.netD_X.apply(weights_init)
-            self.netD_Y.apply(weights_init)
 
         self.optimizerG = self.init["optimizerG"]
         self.optimizerD_X = self.init["optimizerD_X"]
@@ -73,9 +65,40 @@ class Trainer:
         self.train_dataloader = self.init["train_dataloader"]
         self.test_dataloader = self.init["test_dataloader"]
 
+        self.netG_XtoY.to(self.device)
+        self.netG_YtoX.to(self.device)
+
+        self.netD_X.to(self.device)
+        self.netD_Y.to(self.device)
+
+        if self.is_weight_init:
+            self.netG_XtoY.apply(weights_init)
+            self.netG_YtoX.apply(weights_init)
+            self.netD_X.apply(weights_init)
+            self.netD_Y.apply(weights_init)
+
+        if self.lr_scheduler:
+            self.schedulerG = StepLR(
+                optimizer=self.optimizerG, step_size=10, gamma=0.85
+            )
+            self.schedulerD_X = StepLR(
+                optimizer=self.optimizerD_X, step_size=10, gamma=0.85
+            )
+            self.schedulerD_Y = StepLR(
+                optimizer=self.optimizerD_Y, step_size=10, gamma=0.85
+            )
+
         self.total_netG_loss = []
         self.total_netD_X_loss = []
         self.total_netD_Y_loss = []
+
+        self.history = {
+            "G_loss": [],
+            "D_X_loss": [],
+            "D_Y_loss": [],
+        }
+
+        self.loss = float("inf")
 
         self.config = config()
 
@@ -135,13 +158,62 @@ class Trainer:
             raise Exception("Cannot able to save the netG_XtoY model".capitalize())
 
     def saved_train_best_model(self, **kwargs):
-        pass
+        if os.path.exists(self.config["path"]["best_model_path"]):
+            path = self.config["path"]["best_model_path"]
+
+            if self.loss > np.mean(kwargs["netG_loss"]):
+                self.loss = np.mean(kwargs["netG_loss"])
+
+                torch.save(
+                    {
+                        "netG_XtoY": self.netG_XtoY.state_dict(),
+                        "netG_YtoX": self.netG_YtoX.state_dict(),
+                        "epoch": kwargs["epoch"],
+                        "loss": np.mean(kwargs["netG_loss"]),
+                    },
+                    os.path.join(path, "best_model.pth"),
+                )
+
+        else:
+            raise Exception("Cannot able to save the best_model".capitalize())
 
     def saved_model_history(self, **kwargs):
-        pass
+        if os.path.exists(self.config["path"]["files_path"]):
+            path = self.config["path"]["files_path"]
+            pd.DataFrame(
+                {
+                    "netG_loss": kwargs["netG_loss"],
+                    "netD_X_loss": kwargs["netD_X_loss"],
+                    "netD_Y_loss": kwargs["netD_Y_loss"],
+                }
+            ).to_csv(os.path.join(path, "model_history.csv"))
+
+        else:
+            raise Exception("Cannot be saved the model history".capitalize())
 
     def saved_train_images(self, **kwargs):
-        pass
+        if os.path.exists(self.config["path"]["processed_path"]):
+            path = self.config["path"]["processed_path"]
+
+            X, _ = next(iter(load(filename=os.path.join(path, "train_dataloader.pkl"))))
+
+            predict_y = self.netG_XtoY(X.to(self.device))
+            reconstructed_x = self.netG_YtoX(predict_y)
+
+            for image in [
+                ("predict_y", predict_y),
+                ("reconstructed_x", reconstructed_x),
+            ]:
+                save_image(
+                    image[1],
+                    os.path.join(
+                        self.config["path"]["train_results"],
+                        image[0] + "{}.png".format(kwargs["epoch"]),
+                    ),
+                    nrow=1,
+                )
+        else:
+            raise Exception("Cannot be saved the processed images".capitalize())
 
     def show_progress(self, **kwargs):
         if self.is_display:
@@ -152,6 +224,12 @@ class Trainer:
                     np.mean(kwargs["netG_loss"]),
                     np.mean(kwargs["netD_X_loss"]),
                     np.mean(kwargs["netD_Y_loss"]),
+                )
+            )
+        else:
+            print(
+                "Epochs: [{}/{}] is completed".capitalize().format(
+                    kwargs["epochs"], self.epochs
                 )
             )
 
@@ -233,30 +311,144 @@ class Trainer:
         return d_y_loss.item()
 
     def train(self):
+        warnings.filterwarnings("ignore")
+
         for epoch in tqdm(range(self.epochs)):
             netG_loss = []
             netD_X_loss = []
             netD_Y_loss = []
 
-            for _, (X, y) in enumerate(self.train_dataloader):
-                X = X.to(self.device)
-                y = y.to(self.device)
+            for idx, (X, y) in enumerate(self.train_dataloader):
+                try:
+                    X = X.to(self.device)
+                    y = y.to(self.device)
 
-                netD_X_loss.append(self.update_train_netD_X(X=X, y=y))
-                netD_Y_loss.append(self.update_train_netD_Y(X=X, y=y))
-                netG_loss.append(self.update_train_netG(X=X, y=y))
+                    netD_X_loss.append(self.update_train_netD_X(X=X, y=y))
+                    netD_Y_loss.append(self.update_train_netD_Y(X=X, y=y))
+                    netG_loss.append(self.update_train_netG(X=X, y=y))
 
-            self.show_progress(
-                netG_loss=netG_loss,
-                netD_X_loss=netD_X_loss,
-                netD_Y_loss=netD_Y_loss,
-                epoch=epoch + 1,
+                except Exception as e:
+                    print(f"An error occurred during the training process: {e}")
+                    continue
+
+            try:
+                self.show_progress(
+                    netG_loss=netG_loss,
+                    netD_X_loss=netD_X_loss,
+                    netD_Y_loss=netD_Y_loss,
+                    epoch=epoch + 1,
+                )
+
+                self.saved_checkpoints_netG_XtoY(epoch=epoch + 1)
+                self.saved_checkpoints_netG_YtoX(epoch=epoch + 1)
+                self.saved_train_best_model(epoch=epoch + 1, netG_loss=netG_loss)
+
+            except Exception as e:
+                print(
+                    f"An error occurred while saving checkpoints or updating progress: {e}"
+                )
+
+            self.total_netG_loss.append(np.mean(netG_loss))
+            self.total_netD_X_loss.append(np.mean(netD_X_loss))
+            self.total_netD_Y_loss.append(np.mean(netD_Y_loss))
+
+            if (epoch + 1) % 2:
+                self.saved_train_images(epoch=epoch + 1)
+
+            if self.lr_scheduler:
+                self.schedulerG.step()
+                self.schedulerD_X.step()
+                self.schedulerD_Y.step()
+
+        try:
+            self.history["G_loss"].extend(self.total_netG_loss)
+            self.history["D_X_loss"].extend(self.total_netD_X_loss)
+            self.history["D_Y_loss"].extend(self.total_netD_Y_loss)
+
+            self.saved_model_history(
+                netG_loss=self.total_netG_loss,
+                netD_X_loss=self.total_netD_X_loss,
+                netD_Y_loss=self.total_netD_Y_loss,
             )
 
-            self.saved_checkpoints_netG_XtoY(epoch=epoch + 1)
-            self.saved_checkpoints_netG_YtoX(epoch=epoch + 1)
+            if os.path.exists(self.config["path"]["metrics_path"]):
+                for file in [
+                    ("netG", self.total_netG_loss),
+                    ("netD_X", self.total_netD_X_loss),
+                    ("netD_Y", self.total_netD_Y_loss),
+                ]:
+                    dump(
+                        value=file[1],
+                        filename=os.path.join(
+                            self.config["path"]["metrics_path"], file[0] + ".pkl"
+                        ),
+                    )
+
+            else:
+                raise Exception("Cannot be saved the metrics".capitalize())
+        except Exception as e:
+            print(f"An error occurred while saving the training history: {e}")
 
 
 if __name__ == "__main__":
-    trainer = Trainer(epochs=1)
+    parser = argparse.ArgumentParser(description="Trainer for DiscoGAN".capitalize())
+    parser.add_argument(
+        "--in_channels",
+        type=int,
+        default=3,
+        help="Define the number of channels of image".capitalize(),
+    )
+    parser.add_argument(
+        "--epochs",
+        type=int,
+        default=500,
+        help="Number of epochs to train the model".capitalize(),
+    )
+    parser.add_argument(
+        "--device",
+        type=str,
+        default="mps",
+        help="Choose the device to train the model".capitalize(),
+    )
+    parser.add_argument(
+        "--adam", type=bool, default=True, help="Use adam optimizer".capitalize()
+    )
+    parser.add_argument(
+        "--SGD", type=bool, default=False, help="Use SGD optimizer".capitalize()
+    )
+    parser.add_argument(
+        "--lr_scheduler",
+        type=bool,
+        default=False,
+        help="Use the lr scheduler to prevent the exploding Gradient".capitalize(),
+    )
+    parser.add_argument(
+        "--is_display",
+        type=bool,
+        default=True,
+        help="Display the training process".capitalize(),
+    )
+    parser.add_argument(
+        "--is_weight_init",
+        type=bool,
+        default=False,
+        help="Initialize the weights of the model".capitalize(),
+    )
+    parser.add_argument(
+        "--lr", type=float, default=0.0002, help="Learning rate".capitalize()
+    )
+
+    args = parser.parse_args()
+
+    trainer = Trainer(
+        in_channels=args.in_channels,
+        epochs=args.epochs,
+        lr=args.lr,
+        device=args.device,
+        adam=args.adam,
+        SGD=args.SGD,
+        lr_scheduler=args.lr_scheduler,
+        is_display=args.is_display,
+        is_weight_init=args.is_weight_init,
+    )
     trainer.train()
