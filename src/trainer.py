@@ -1,21 +1,22 @@
 import sys
 import os
+import torch
 import argparse
+import warnings
+import torch.nn as nn
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
-import warnings
-import torch
-import torch.nn as nn
+import matplotlib.pyplot as plt
 from torchvision.utils import save_image
 from torch.optim.lr_scheduler import StepLR
 
 sys.path.append("src/")
 
-from utils import device_init, weights_init, config, load, dump
 from helper import helpers
 from generator import Generator
 from discriminator import Discriminator
+from utils import device_init, weights_init, config, load, dump
 
 
 class Trainer:
@@ -30,6 +31,7 @@ class Trainer:
         lr_scheduler=False,
         is_display=True,
         is_weight_init=False,
+        is_save_image=True,
     ):
         self.in_channels = in_channels
         self.epochs = epochs
@@ -40,6 +42,7 @@ class Trainer:
         self.lr_scheduler = lr_scheduler
         self.is_display = is_display
         self.is_weight_init = is_weight_init
+        self.is_save_image = is_save_image
 
         self.init = helpers(
             lr=self.lr, adam=self.adam, SGD=self.SGD, in_channels=self.in_channels
@@ -352,7 +355,7 @@ class Trainer:
             self.total_netD_X_loss.append(np.mean(netD_X_loss))
             self.total_netD_Y_loss.append(np.mean(netD_Y_loss))
 
-            if (epoch + 1) % 2:
+            if (epoch + 1) % 50 and (self.is_save_image):
                 self.saved_train_images(epoch=epoch + 1)
 
             if self.lr_scheduler:
@@ -388,6 +391,48 @@ class Trainer:
                 raise Exception("Cannot be saved the metrics".capitalize())
         except Exception as e:
             print(f"An error occurred while saving the training history: {e}")
+
+    @staticmethod
+    def plot_history():
+        config_files = config()
+        if os.path.exists(config_files["path"]["metrics_path"]):
+            path = config_files["path"]["metrics_path"]
+
+            netG = os.path.join(path, "netG.pkl")
+            netD_X = os.path.join(path, "netD_X.pkl")
+            netD_Y = os.path.join(path, "netD_Y.pkl")
+            files = [netG, netD_X, netD_Y]
+            labels = ["Generator Loss", "Discriminator X Loss", "Discriminator Y Loss"]
+
+            plt.figure(figsize=(20, 10))
+
+            for index, (file, label) in enumerate(zip(files, labels)):
+                if os.path.exists(file):
+                    data = load(filename=file)
+                    plt.subplot(1, 3, index + 1)
+                    plt.plot(data, label=label)
+                    plt.xlabel("Epochs")
+                    plt.ylabel("Loss")
+                    plt.title(label)
+                    plt.legend()
+
+                else:
+                    print(f"Error: {file} does not exist.")
+
+            plt.tight_layout()
+            (
+                plt.savefig(
+                    os.path.join(
+                        config_files["path"]["metrics_path"], "model_history.jpeg"
+                    )
+                )
+                if os.path.exists(config_files["path"]["metrics_path"])
+                else "Cannot be saved the image of the model history".capitalize()
+            )
+            plt.show()
+
+        else:
+            raise Exception("Cannot be open the metrics files".capitalize())
 
 
 if __name__ == "__main__":
@@ -452,3 +497,5 @@ if __name__ == "__main__":
         is_weight_init=args.is_weight_init,
     )
     trainer.train()
+
+    trainer.plot_history()
