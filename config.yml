@@ -5,11 +5,11 @@
 
 
 path:
-  files_path: ./research/files
+  files_path: ./research/files/
   raw_path: ./data/raw/
   processed_path: ./data/processed/
-  netG_XtoY_path: ./checkpoints/train_models_netG_XtoY
-  netG_YtoX_path: ./checkpoints/train_models_netG_YtoX
+  netG_XtoY_path: ./checkpoints/train_models_netG_XtoY/
+  netG_YtoX_path: ./checkpoints/train_models_netG_YtoX/
   best_model_path: ./checkpoints/best_model/
   train_results: ./outputs/train_results/
   test_result: ./outputs/test_result/

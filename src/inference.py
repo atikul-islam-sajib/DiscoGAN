@@ -10,7 +10,6 @@ from torchvision import transforms
 sys.path.append("src/")
 
 from test import TestModel
-from utils import device_init, load, dump
 
 
 class Inference(TestModel):
