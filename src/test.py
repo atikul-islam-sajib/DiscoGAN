@@ -13,7 +13,8 @@ from generator import Generator
 
 
 class TestModel:
-    def __init__(self, netG_XtoY=None, netG_YtoX=None, device="mps"):
+    def __init__(self, dataloader="test", netG_XtoY=None, netG_YtoX=None, device="mps"):
+        self.dataloader = dataloader
         self.XtoY = netG_XtoY
         self.YtoX = netG_YtoX
 
@@ -75,11 +76,24 @@ class TestModel:
         if os.path.exists(self.config["path"]["processed_path"]):
             path = self.config["path"]["processed_path"]
 
-            self.test_dataloader = load(
-                filename=os.path.join(path, "test_dataloader.pkl")
-            )
+            if self.dataloader == "dataloader":
+                self.test_dataloader = load(
+                    filename=os.path.join(path, "test_dataloader.pkl")
+                )
 
-            return self.test_dataloader
+                return self.test_dataloader
+
+            elif self.dataloader == "train":
+                self.train_dataloader = load(
+                    filename=os.path.join(path, "train_dataloader.pkl")
+                )
+
+                return self.train_dataloader
+
+            else:
+                self.dataloader = load(filename=os.path.join(path, "dataloader.pkl"))
+
+                return self.dataloader
 
         else:
             raise Exception("processed_path does not exist".capitalize())
