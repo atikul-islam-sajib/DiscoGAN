@@ -9,8 +9,12 @@ from utils import device_init, load, dump
 
 
 class Inference(TestModel):
-    def __init__(self, dataloader=None, image=None, XtoY=None, YtoX=None, device="mps"):
-        super(Inference, self).__init__(netG_XtoY=XtoY, netG_YtoX=YtoX, device=device)
+    def __init__(
+        self, dataloader="dataloader", image=None, XtoY=None, YtoX=None, device="mps"
+    ):
+        super(Inference, self).__init__(
+            dataloader=dataloader, netG_XtoY=XtoY, netG_YtoX=YtoX, device=device
+        )
         self.dataloader = dataloader
         self.image = image
 
