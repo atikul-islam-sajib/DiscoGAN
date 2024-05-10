@@ -13,8 +13,16 @@ from generator import Generator
 
 
 class TestModel:
-    def __init__(self, dataloader="test", netG_XtoY=None, netG_YtoX=None, device="mps"):
+    def __init__(
+        self,
+        dataloader="test",
+        best_model=True,
+        netG_XtoY=None,
+        netG_YtoX=None,
+        device="mps",
+    ):
         self.dataloader = dataloader
+        self.best_model = best_model
         self.XtoY = netG_XtoY
         self.YtoX = netG_YtoX
 
@@ -30,13 +38,19 @@ class TestModel:
         self.netG_YtoX.to(self.device)
 
     def select_best_model(self):
-        if os.path.exists(self.config["path"]["best_model_path"]):
-            model_state_dict = torch.load(
-                os.path.join(self.config["path"]["best_model_path"], "best_model.pth")
-            )
+        if self.best_model:
+            if os.path.exists(self.config["path"]["best_model_path"]):
+                model_state_dict = torch.load(
+                    os.path.join(
+                        self.config["path"]["best_model_path"], "best_model.pth"
+                    )
+                )
 
-            self.netG_XtoY.load_state_dict(model_state_dict["netG_XtoY"])
-            self.netG_YtoX.load_state_dict(model_state_dict["netG_YtoX"])
+                self.netG_XtoY.load_state_dict(model_state_dict["netG_XtoY"])
+                self.netG_YtoX.load_state_dict(model_state_dict["netG_YtoX"])
+
+            else:
+                raise Exception("Cannot find the best model".capitalize())
 
         else:
             if isinstance(self.XtoY, Generator) and isinstance(self.YtoX, Generator):
@@ -76,9 +90,9 @@ class TestModel:
         if os.path.exists(self.config["path"]["processed_path"]):
             path = self.config["path"]["processed_path"]
 
-            if self.dataloader == "dataloader":
+            if self.dataloader == "all":
                 self.test_dataloader = load(
-                    filename=os.path.join(path, "test_dataloader.pkl")
+                    filename=os.path.join(path, "dataloader.pkl")
                 )
 
                 return self.test_dataloader
@@ -91,7 +105,9 @@ class TestModel:
                 return self.train_dataloader
 
             else:
-                self.dataloader = load(filename=os.path.join(path, "dataloader.pkl"))
+                self.dataloader = load(
+                    filename=os.path.join(path, "test_dataloader.pkl")
+                )
 
                 return self.dataloader
 
@@ -188,12 +204,26 @@ if __name__ == "__main__":
         default="mps",
         help="Define the device".capitalize(),
     )
+    parser.add_argument(
+        "--best_model",
+        type=bool,
+        default=True,
+        help="Define whether to use the best model".capitalize(),
+    )
+    parser.add_argument(
+        "--dataloader",
+        type=str,
+        default="test",
+        help="Define the dataloader".capitalize(),
+    )
 
     args = parser.parse_args()
 
     test_model = TestModel(
-        XtoY_model_path=args.XtoY,
-        YtoX_model_path=args.YtoX,
+        dataloader=args.dataloader,
+        best_model=args.best_model,
+        netG_XtoY=args.XtoY,
+        netG_YtoX=args.YtoX,
         device=args.device,
     )
 
