@@ -1,6 +1,6 @@
 # DiscoGAN Implementation
 
-<img src="https://github.com/atikul-islam-sajib/Research-Assistant-Work-/blob/main/test_result%202.png" alt="AC-GAN - Medical Image Dataset Generator: Generated Image with labels">
+<img src="https://github.com/atikul-islam-sajib/Research-Assistant-Work-/blob/main/test_result.png" alt="AC-GAN - Medical Image Dataset Generator: Generated Image with labels">
 
 
 DiscoGAN, short for “Discovering Cross-domain Relations with Generative Adversarial Networks,” is a powerful deep learning framework used in artificial intelligence. This innovative method enables the learning of relations between different domains in an unsupervised manner.
