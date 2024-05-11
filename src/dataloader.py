@@ -304,7 +304,7 @@ if __name__ == "__main__":
             paired_images=args.paired_images,
         )
 
-        # loader.unzip_folder()
+        loader.unzip_folder()
         loader.extract_features()
         loader.create_dataloader()
 
