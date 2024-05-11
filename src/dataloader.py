@@ -305,7 +305,7 @@ if __name__ == "__main__":
         )
 
         loader.unzip_folder()
-        loader.extract_features()
+        # loader.extract_features() # No need to call as it is calling from the "create_dataloader" method
         loader.create_dataloader()
 
         loader.dataset_details()
