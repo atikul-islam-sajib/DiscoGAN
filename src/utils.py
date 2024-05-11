@@ -63,5 +63,4 @@ def clear():
         test_result,
     ]:
         for file in os.listdir(folder):
-            print(folder)
             os.remove(os.path.join(folder, file))
